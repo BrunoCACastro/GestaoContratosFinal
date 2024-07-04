@@ -1,10 +1,4 @@
-<%-- 
-    Document   : CadastroTermoAditivo
-    Created on : 30 de mai. de 2024, 11:27:56
-    Author     : Bruno Cezar
---%>
-
-<%@ page import="java.io.*, java.sql.*, jakarta.servlet.*, jakarta.servlet.http.*" %>
+<%@ page import="java.io.*, java.sql.*, jakarta.servlet.*, jakarta.servlet.http.*, java.util.*, org.json.JSONObject" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <!DOCTYPE html>
 <html>
@@ -15,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="${pageContext.request.contextPath}/style.css">  
     <script>
         function submitForm(event) {
-            event.preventDefault(); // Prevent the form from submitting in the traditional way
+            event.preventDefault();
             var form = document.getElementById('cadastroForm');
             var formData = new URLSearchParams(new FormData(form)).toString();
 
@@ -39,7 +33,7 @@
         <label for="idContrato">ID do Contrato:</label>
         <input type="text" id="idContrato" name="idContrato" required><br>
         
-        <label for="descricaoTermoAditivo">Descrição do objeto do contrato:</label>
+        <label for="descricaoTermoAditivo">Descrição do Termo Aditivo:</label>
         <textarea id="descricaoTermoAditivo" name="descricaoTermoAditivo" required></textarea><br>
         
         <label for="dataInicio">Data de início:</label>
@@ -52,95 +46,102 @@
     </form>
     <p id="message"></p>
 
-    <%
-        if ("POST".equalsIgnoreCase(request.getMethod())) {
-            String idContrato = request.getParameter("idContrato");
-            String descricaoTermoAditivo = request.getParameter("descricaoTermoAditivo");
-            String dataInicio = request.getParameter("dataInicio");
-            String dataFim = request.getParameter("dataFim");
+<%
+    if ("POST".equalsIgnoreCase(request.getMethod())) {
+        String contentType = request.getContentType();
+        String idContrato = "";
+        String descricaoTermoAditivo = "";
+        String dataInicio = "";
+        String dataFim = "";
 
-            // Validação dos parâmetros
-            boolean hasError = false;
-            StringBuilder errorMessage = new StringBuilder();
-
-            if (idContrato == null || idContrato.trim().isEmpty()) {
-                hasError = true;
-                errorMessage.append("ID do Contrato é obrigatório.<br>");
+        if (contentType != null && contentType.contains("application/json")) {
+            // Processar JSON
+            StringBuilder sb = new StringBuilder();
+            BufferedReader reader = request.getReader();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
             }
+            String jsonString = sb.toString();
+            JSONObject json = new JSONObject(jsonString);
+            idContrato = json.getString("idContrato");
+            descricaoTermoAditivo = json.getString("descricaoTermoAditivo");
+            dataInicio = json.getString("dataInicio");
+            dataFim = json.getString("dataFim");
+        } else {
+            // Processar form-urlencoded
+            idContrato = request.getParameter("idContrato");
+            descricaoTermoAditivo = request.getParameter("descricaoTermoAditivo");
+            dataInicio = request.getParameter("dataInicio");
+            dataFim = request.getParameter("dataFim");
+        }
 
-            if (descricaoTermoAditivo == null || descricaoTermoAditivo.trim().isEmpty()) {
-                hasError = true;
-                errorMessage.append("Descrição do Termo Aditivo é obrigatória.<br>");
-            }
+        boolean hasError = false;
+        StringBuilder errorMessage = new StringBuilder();
 
-            if (dataInicio == null || dataInicio.trim().isEmpty()) {
-                hasError = true;
-                errorMessage.append("Data de Início é obrigatória.<br>");
-            }
+        if (idContrato == null || idContrato.trim().isEmpty()) {
+            hasError = true;
+            errorMessage.append("ID do Contrato é obrigatório.<br>");
+        }
 
-            if (dataFim == null || dataFim.trim().isEmpty()) {
-                hasError = true;
-                errorMessage.append("Data de Término é obrigatória.<br>");
-            }
+        if (descricaoTermoAditivo == null || descricaoTermoAditivo.trim().isEmpty()) {
+            hasError = true;
+            errorMessage.append("Descrição do Termo Aditivo é obrigatória.<br>");
+        }
 
-            if (hasError) {
-                out.println("<p>Erro ao cadastrar termo aditivo:</p>");
-                out.println("<p>" + errorMessage.toString() + "</p>");
-            } else {
-                response.setContentType("text/html;charset=UTF-8");
+        if (dataInicio == null || dataInicio.trim().isEmpty()) {
+            hasError = true;
+            errorMessage.append("Data de Início é obrigatória.<br>");
+        }
 
-                Connection conn = null;
-                PreparedStatement pstmt = null;
+        if (dataFim == null || dataFim.trim().isEmpty()) {
+            hasError = true;
+            errorMessage.append("Data de Término é obrigatória.<br>");
+        }
 
-                try {
-                    String url = "jdbc:mysql://localhost:3306/Projeto_Gestao_Contratos_Etapa_5";
-                    String usuario = "root";
-                    String senha = "=senaCEad2022";
+        if (hasError) {
+            out.println("<p>Erro ao cadastrar termo aditivo:</p>");
+            out.println("<p>" + errorMessage.toString() + "</p>");
+        } else {
+            response.setContentType("text/html;charset=UTF-8");
 
-                    Class.forName("com.mysql.cj.jdbc.Driver");
-                    conn = DriverManager.getConnection(url, usuario, senha);
+            try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/Projeto_Gestao_Contratos_Etapa_5", "root", "=senaCEad2022");
+                 PreparedStatement pstmtCheck = conn.prepareStatement("SELECT id_contrato FROM contratos WHERE id_contrato = ?");
+                 PreparedStatement pstmt = conn.prepareStatement("INSERT INTO termos_aditivos (id_contrato, descricao_termo_aditivo, data_inicio, data_fim) VALUES (?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
 
-                    String sql = "INSERT INTO termos_aditivos (id_contrato, descricao_termo_aditivo, data_inicio, data_fim) VALUES (?, ?, ?, ?)";
-                    pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-                    pstmt.setString(1, idContrato);
-                    pstmt.setString(2, descricaoTermoAditivo);
-                    pstmt.setString(3, dataInicio);
-                    pstmt.setString(4, dataFim);
-
-                    int rows = pstmt.executeUpdate();
-                    if (rows > 0) {
-                        ResultSet generatedKeys = pstmt.getGeneratedKeys();
-                        if (generatedKeys.next()) {
-                            int id = generatedKeys.getInt(1);
-                            out.println("<p>Cadastro de termo aditivo realizado com sucesso! ID: " + id + "</p>");
-                        }
+                // Verificar se o contrato existe
+                pstmtCheck.setString(1, idContrato);
+                try (ResultSet rsCheck = pstmtCheck.executeQuery()) {
+                    if (!rsCheck.next()) {
+                        out.println("<p>Erro ao cadastrar termo aditivo: Contrato não encontrado.</p>");
                     } else {
-                        out.println("<p>Erro ao cadastrar termo aditivo. Nenhuma linha afetada.</p>");
-                    }
-                } catch (ClassNotFoundException | SQLException e) {
-                    StringWriter sw = new StringWriter();
-                    PrintWriter pw = new PrintWriter(sw);
-                    e.printStackTrace(pw);
-                    out.println("<p>Erro ao cadastrar termo aditivo: " + e.getMessage() + "</p>");
-                    out.println("<pre>" + sw.toString() + "</pre>");
-                } finally {
-                    try {
-                        if (pstmt != null) {
-                            pstmt.close();
+                        // Inserir termo aditivo
+                        pstmt.setString(1, idContrato);
+                        pstmt.setString(2, descricaoTermoAditivo);
+                        pstmt.setString(3, dataInicio);
+                        pstmt.setString(4, dataFim);
+
+                        int rows = pstmt.executeUpdate();
+                        if (rows > 0) {
+                            try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                                if (generatedKeys.next()) {
+                                    int id = generatedKeys.getInt(1);
+                                    out.println("<p>Cadastro de termo aditivo realizado com sucesso! ID: " + id + "</p>");
+                                }
+                            }
+                        } else {
+                            out.println("<p>Erro ao cadastrar termo aditivo. Nenhuma linha afetada.</p>");
                         }
-                        if (conn != null) {
-                            conn.close();
-                        }
-                    } catch (SQLException e) {
-                        StringWriter sw = new StringWriter();
-                        PrintWriter pw = new PrintWriter(sw);
-                        e.printStackTrace(pw);
-                        out.println("<pre>" + sw.toString() + "</pre>");
                     }
                 }
+            } catch (SQLException e) {
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                out.println("<p>Erro ao cadastrar termo aditivo: " + e.getMessage() + "</p>");
+                out.println("<pre>" + sw.toString() + "</pre>");
             }
         }
-    %>
+    }
+%>
 </body>
 </html>
-

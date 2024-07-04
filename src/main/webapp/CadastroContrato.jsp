@@ -4,7 +4,7 @@
     Author     : Bruno Cezar
 --%>
 
-<%@ page import="java.io.*, java.sql.*, jakarta.servlet.*, jakarta.servlet.http.*, java.util.*" %>
+<%@ page import="java.io.*, java.sql.*, jakarta.servlet.*, jakarta.servlet.http.*, java.util.*, org.json.*" %>
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
 <!DOCTYPE html>
@@ -55,10 +55,33 @@
 
     <%
         if ("POST".equalsIgnoreCase(request.getMethod())) {
-            String nomeContrato = request.getParameter("nomeContrato");
-            String descricaoContrato = request.getParameter("descricaoContrato");
-            String dataInicio = request.getParameter("dataInicio");
-            String dataTermino = request.getParameter("dataTermino");
+            String contentType = request.getContentType();
+            String nomeContrato = "";
+            String descricaoContrato = "";
+            String dataInicio = "";
+            String dataTermino = "";
+
+            if (contentType != null && contentType.contains("application/json")) {
+                // Processar JSON
+                StringBuilder sb = new StringBuilder();
+                BufferedReader reader = request.getReader();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                String jsonString = sb.toString();
+                JSONObject json = new JSONObject(jsonString);
+                nomeContrato = json.getString("nomeContrato");
+                descricaoContrato = json.getString("descricaoContrato");
+                dataInicio = json.getString("dataInicio");
+                dataTermino = json.getString("dataTermino");
+            } else {
+                // Processar form-urlencoded
+                nomeContrato = request.getParameter("nomeContrato");
+                descricaoContrato = request.getParameter("descricaoContrato");
+                dataInicio = request.getParameter("dataInicio");
+                dataTermino = request.getParameter("dataTermino");
+            }
 
             // Verificação para depuração
             out.println("<p>nomeContrato: " + nomeContrato + "</p>");
@@ -117,4 +140,5 @@
     %>
 </body>
 </html>
+
 

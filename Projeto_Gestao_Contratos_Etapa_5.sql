@@ -4,6 +4,9 @@ USE Projeto_Gestao_Contratos_Etapa_5;
 
 SHOW TABLES;
 
+SELECT * FROM Contratos;
+SELECT * FROM Termos_Aditivos;
+
 CREATE TABLE Contratos (
   id_contrato INT NOT NULL AUTO_INCREMENT,
   nome_contrato VARCHAR(100) NOT NULL,
